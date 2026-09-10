@@ -1,0 +1,24 @@
+{
+  "name": "trillium-cs",
+  "version": "1.0.0",
+  "description": "This is your computer for this class. It is not your Chromebook — it is a real Linux machine running in a data center. Your Chromebook is the screen.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Micah-Zimmerman/trillium-cs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Micah-Zimmerman/trillium-cs/issues"
+  },
+  "homepage": "https://github.com/Micah-Zimmerman/trillium-cs#readme",
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}
