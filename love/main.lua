@@ -16,25 +16,29 @@ function love.load()
 	autofire = false
 	screenWidth = love.graphics.getWidth()
 	screenHeight = love.graphics.getHeight()
-	-- player.x/y is now the single source of truth for "where are we in the world"
 	player = { x = 0, y = 0, health = 100 }
+	wavecleared = false
+	paused = false
+	shop = false
+	autofirecooldown = 0
 end
 
 function enemymove(enemy, dt)
-	-- chase the player's actual world position, not a fixed screen point
-	local dx = player.x - (enemy.x + 35)
-	local dy = player.y - (enemy.y + 35)
-	local distance = math.sqrt(dx * dx + dy * dy)
-	if enemy.knockedback then
-		enemy.x = enemy.x + enemy.knockbackDirectionX * 400 * dt
-		enemy.y = enemy.y + enemy.knockbackDirectionY * 400 * dt
-		enemy.knockbacktime = enemy.knockbacktime - dt
-		if enemy.knockbacktime <= 0 then
-			enemy.knockedback = false
+	if not paused then
+		local dx = player.x - (enemy.x + 35)
+		local dy = player.y - (enemy.y + 35)
+		local distance = math.sqrt(dx * dx + dy * dy)
+		if enemy.knockedback then
+			enemy.x = enemy.x + enemy.knockbackDirectionX * 400 * dt
+			enemy.y = enemy.y + enemy.knockbackDirectionY * 400 * dt
+			enemy.knockbacktime = enemy.knockbacktime - dt
+			if enemy.knockbacktime <= 0 then
+				enemy.knockedback = false
+			end
+		elseif distance > 0 then
+			enemy.x = enemy.x + (dx / distance) * 80 * dt
+			enemy.y = enemy.y + (dy / distance) * 80 * dt
 		end
-	elseif distance > 0 then
-		enemy.x = enemy.x + (dx / distance) * 80 * dt
-		enemy.y = enemy.y + (dy / distance) * 80 * dt
 	end
 end
 
@@ -51,7 +55,7 @@ function drawenemy(enemy)
 end
 
 function love.mousepressed(mouseX, mouseY, button)
-	if button == 1 and cooldown <= 0 and autofire == false then
+	if not paused and button == 1 and cooldown <= 0 and autofire == false then
 		cooldown = .5
 		local sourceX = love.graphics.getWidth() / 2
 		local sourceY = love.graphics.getHeight() / 2
@@ -66,6 +70,7 @@ function love.mousepressed(mouseX, mouseY, button)
 		table.insert(playershots, {
 			x = player.x,
 			y = player.y,
+			damage = 100,
 			directionX = directionX,
 			directionY = directionY,
 			lifetime = 1.5
@@ -74,41 +79,68 @@ function love.mousepressed(mouseX, mouseY, button)
 end
 
 function love.draw()
+
 	squareSize = 75
 	squareX = (screenWidth - squareSize) / 2
 	squareY = (screenHeight - squareSize) / 2
 	imageScale = math.min(squareSize / mothuel:getWidth(), squareSize / mothuel:getHeight())
 	 imageWidth = mothuel:getWidth() * imageScale
 	 imageHeight = mothuel:getHeight() * imageScale
-	
-	-- background converted through the same world->screen transform as everything else
 	local bgScreenX = backgroundWorldX - player.x + screenWidth / 2
 	local bgScreenY = backgroundWorldY - player.y + screenHeight / 2
 	love.graphics.draw(background, bgScreenX, bgScreenY, 0, 50, 50)
-
-	love.graphics.setColor(1, 1, 1)
-	love.graphics.rectangle("fill", squareX, squareY, squareSize, squareSize)
-	love.graphics.draw(mothuel, squareX + (squareSize - imageWidth) / 2, squareY + (squareSize - imageHeight) / 2, 0, imageScale, imageScale)
+	if not paused then
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.rectangle("fill", squareX, squareY, squareSize, squareSize)	
+		love.graphics.draw(mothuel, squareX + (squareSize - imageWidth) / 2, squareY + (squareSize - imageHeight) / 2, 0, imageScale, imageScale)
+	end
 	-- health bar
 	love.graphics.setColor(1, 0, 0)
 	love.graphics.rectangle("fill", screenWidth - 20 - 300, 10, 300 * (player.health / 100), 60)
 	love.graphics.setColor(0, 0, 0)
 	love.graphics.rectangle ("line", screenWidth - 20 - 300, 10, 300, 60)
 	love.graphics.setColor(1, 1, 1)
-	for _, shot in ipairs(playershots) do
-		local screenX = shot.x - player.x + screenWidth / 2
-		local screenY = shot.y - player.y + screenHeight / 2
-		love.graphics.circle("fill", screenX, screenY, 12)
+	if not paused then
+		for _, shot in ipairs(playershots) do
+			local screenX = shot.x - player.x + screenWidth / 2
+			local screenY = shot.y - player.y + screenHeight / 2
+			love.graphics.circle("fill", screenX, screenY, 12)
+		end
 	end
 
 	love.graphics.setColor(0, 0, 0)
-	love.graphics.print(tostring(player.x), 10, 10)
-	love.graphics.print(tostring(player.y), 10, 30)
+	love.graphics.print(tostring(player.health), screenWidth - 300, 10, 0, 4, 4)
+	if not paused then
+		love.graphics.print(tostring(player.x), 10, 10)
+		love.graphics.print(tostring(player.y), 10, 30)
+	end
 
 	for _, enemy in ipairs(enemies) do
 		drawenemy(enemy)
 	end
+		if shop then
+		love.graphics.setColor(0, 0, 0)
+		love.graphics.rectangle("fill", 30, 30, screenWidth - 60, screenHeight - 60)
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.rectangle("fill", 40, 40, screenWidth / 3, screenHeight - 80)
+		love.graphics.setColor(0, 0, 0)
+		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 2 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 4 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, 3 * (screenHeight - 80) / 4 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, 7 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, 5 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
+		love.graphics.rectangle("fill", 40, 3 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
+		love.graphics.print("Damage()", 40, 40, 0, 2, 2)
+		love.graphics.print("Reload()", 40, 40 + (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Speed()", 40, 40 + 2 * (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Bullet Speed()", 40, 40 + 3 * (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Health()", 40, 40 + 4 * (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Luck()", 40, 40 + 5 * (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Bullet Penetration()", 40, 40 + 6 * (screenHeight - 80) / 8, 0, 2, 2)
+		love.graphics.print("Artifact Strength()", 40, 40 + 7 * (screenHeight - 80) / 8, 0, 2, 2)
 
+	end
 
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.draw(cursor, mouseX, mouseY, 0, 0.12, 0.12, cursor:getWidth() / 2, cursor:getHeight() / 2)
@@ -118,8 +150,10 @@ function love.update(dt)
 	mouseX, mouseY = love.mouse.getPosition()
 	screenWidth = love.graphics.getWidth()
 	screenHeight = love.graphics.getHeight()
-		if love.keyboard.isDown("1") then autofire = true end
-	if cooldown <= 0 and autofire == true then
+	if not paused and love.keyboard.isDown("1") and not autofire and autofirecooldown <= 0 then autofire = true autofirecooldown = 1 end
+	if not paused and love.keyboard.isDown("1") and autofire and autofirecooldown <= 0 then autofire = false autofirecooldown = 1 end
+	autofirecooldown = autofirecooldown - dt
+	if not paused and cooldown <= 0 and autofire == true then
 		cooldown = .5
 		local sourceX = love.graphics.getWidth() / 2
 		local sourceY = love.graphics.getHeight() / 2
@@ -136,17 +170,18 @@ function love.update(dt)
 			y = player.y,
 			directionX = directionX,
 			directionY = directionY,
-			lifetime = 1.5
+			lifetime = 1.5,
+			damage = 100
 		})
 	end
 	for _, enemy in ipairs(enemies) do
 		enemymove(enemy, dt)
 	end
 	local moveX, moveY = 0, 0
-	if love.keyboard.isDown("w") then moveY = moveY - 1 end
-	if love.keyboard.isDown("s") then moveY = moveY + 1 end
-	if love.keyboard.isDown("a") then moveX = moveX - 1 end
-	if love.keyboard.isDown("d") then moveX = moveX + 1 end
+	if not paused and love.keyboard.isDown("w") then moveY = moveY - 1 end
+	if not paused and love.keyboard.isDown("s") then moveY = moveY + 1 end
+	if not paused and love.keyboard.isDown("a") then moveX = moveX - 1 end
+	if not paused and love.keyboard.isDown("d") then moveX = moveX + 1 end
 
 	local moveLength = math.sqrt(moveX * moveX + moveY * moveY)
 	if moveLength > 0 then
@@ -162,7 +197,7 @@ function love.update(dt)
 	cooldown = cooldown - dt
 	for _, enemy in ipairs(enemies) do
 		local playerHalfSize = 75 / 2
-		if enemy.health > 0
+		if not paused and enemy.health > 0
 			and player.x - playerHalfSize < enemy.x + 70
 			and player.x + playerHalfSize > enemy.x
 			and player.y - playerHalfSize < enemy.y + 70
@@ -179,7 +214,6 @@ function love.update(dt)
 				enemy.knockbackDirectionY = knockbackY / knockbackLength
 			else
 				enemy.knockbackDirectionX = 1
-				
 				enemy.knockbackDirectionY = 0
 			end
 		end
@@ -197,11 +231,21 @@ function love.update(dt)
 				if enemy.health > 0
 					and playershot.x >= enemy.x and playershot.x <= enemy.x + 70
 					and playershot.y >= enemy.y and playershot.y <= enemy.y + 70 then
-					enemy.health = enemy.health - 10
+					enemy.health = enemy.health - playershot.damage
 					table.remove(playershots, index)
 					break
 				end
 			end
 		end
 	end
+	wavecleared = true
+	for _, enemy in ipairs(enemies) do
+		if enemy.health > 0 then
+			wavecleared = false
+			break
+		end
+	end
+
+	paused = wavecleared
+	shop = wavecleared
 end
