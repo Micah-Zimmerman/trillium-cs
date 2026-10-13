@@ -119,27 +119,39 @@ function love.draw()
 		drawenemy(enemy)
 	end
 		if shop then
+		local function drawShopLabel(label, x, y, scale)
+			local shopbuttonWidth = screenWidth / 4
+			local shopbuttonHeight = font:getHeight() * scale
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.rectangle("fill", x - 10, y - 8, shopbuttonWidth + 20, shopbuttonHeight + 16)
+			love.graphics.setColor(0, 0, 0)
+			love.graphics.print(label, x, y, 0, scale, scale)
+		end
+		local function drawArtifactLabel(labelnumber)
+			local artifactLabelWidth = screenWidth / 6
+			local artifactLabelHeight = screenHeight / 2.2
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.rectangle("fill", (labelnumber - 1) * (screenWidth / 6 + 40) + screenWidth / 3, 160, artifactLabelWidth, artifactLabelHeight)
+			love.graphics.setColor(0, 0, 0)
+		end
 		love.graphics.setColor(0, 0, 0)
 		love.graphics.rectangle("fill", 30, 30, screenWidth - 60, screenHeight - 60)
 		love.graphics.setColor(1, 1, 1)
-		love.graphics.rectangle("fill", 40, 40, screenWidth / 3, screenHeight - 80)
-		love.graphics.setColor(0, 0, 0)
-		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 2 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 4 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, 3 * (screenHeight - 80) / 4 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, 7 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, 5 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
-		love.graphics.rectangle("fill", 40, 3 * (screenHeight - 80) / 8 + 35, screenWidth / 3, 10)
-		love.graphics.print("Damage()", 40, 40, 0, 2, 2)
-		love.graphics.print("Reload()", 40, 40 + (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Speed()", 40, 40 + 2 * (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Bullet Speed()", 40, 40 + 3 * (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Health()", 40, 40 + 4 * (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Luck()", 40, 40 + 5 * (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Bullet Penetration()", 40, 40 + 6 * (screenHeight - 80) / 8, 0, 2, 2)
-		love.graphics.print("Artifact Strength()", 40, 40 + 7 * (screenHeight - 80) / 8, 0, 2, 2)
-
+		drawShopLabel("Shop", screenWidth / 2 - 90, 40, 3) 
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.rectangle("line", 30, 30, screenWidth - 60, screenHeight - 60)
+		drawArtifactLabel(1)
+		drawArtifactLabel(2)
+		drawArtifactLabel(3)
+		
+		drawShopLabel("Damage()", 40, 40, 2)
+		drawShopLabel("Reload()", 40, 40 + (screenHeight - 80) / 8, 2)
+		drawShopLabel("Speed()", 40, 40 + 2 * (screenHeight - 80) / 8, 2)
+		drawShopLabel("Bullet Speed()", 40, 40 + 3 * (screenHeight - 80) / 8, 2)
+		drawShopLabel("Health()", 40, 40 + 4 * (screenHeight - 80) / 8, 2)
+		drawShopLabel("Luck()", 40, 40 + 5 * (screenHeight - 80) / 8, 2)
+		drawShopLabel("Bullet Penetration()", 40, 40 + 6 * (screenHeight - 80) / 8, 2)
+		drawShopLabel("Artifact Strength()", 40, 40 + 7 * (screenHeight - 80) / 8, 2)
 	end
 
 	love.graphics.setColor(1, 1, 1)
