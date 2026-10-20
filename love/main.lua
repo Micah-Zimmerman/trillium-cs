@@ -1,8 +1,9 @@
 function love.load()
 	background = love.graphics.newImage("Images/vietnambackground.png")
 	enemies = {
-		{ x = 400, y = 400, health = 100, knockedback = false, knockbacktime = 0 },
-		{ x = 600, y = 400, health = 100, knockedback = false, knockbacktime = 0 }
+		{ x = 400, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 },
+		{ x = 500, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 },
+		{ x = 600, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 }
 	}
 	mothuel = love.graphics.newImage("Images/mothuel.png")
 	cursor = love.graphics.newImage("Images/cursor.png")
@@ -21,8 +22,21 @@ function love.load()
 	paused = false
 	shop = false
 	autofirecooldown = 0
+	exitButtonWidth = 100
+	exitButtonHeight = 50
+	exitButtonX = screenWidth - exitButtonWidth - 40
+	exitButtonY = screenHeight - exitButtonHeight - 40
+	debugMenu = false
+	debugMenuCooldown = 0
+	spawnTimer = 1
 end
-
+function enemyspawn()
+	local spawnDistance = math.random(300, 500)
+	local angle = math.random() * 2 * math.pi
+	local spawnX = player.x + math.cos(angle) * spawnDistance
+	local spawnY = player.y + math.sin(angle) * spawnDistance
+	table.insert(enemies, { x = spawnX, y = spawnY, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 })
+end
 function enemymove(enemy, dt)
 	if not paused then
 		local dx = player.x - (enemy.x + 35)
@@ -35,22 +49,20 @@ function enemymove(enemy, dt)
 			if enemy.knockbacktime <= 0 then
 				enemy.knockedback = false
 			end
-		elseif distance > 0 then
+		elseif distance > 0 and enemy.height == 70 then
 			enemy.x = enemy.x + (dx / distance) * 80 * dt
 			enemy.y = enemy.y + (dy / distance) * 80 * dt
 		end
-	end
-end
-
-function drawenemy(enemy)
-	if enemy.health > 0 then
-		local screenX = enemy.x - player.x + screenWidth / 2
-		local screenY = enemy.y - player.y + screenHeight / 2
-		love.graphics.setColor(0, 1, 0)
-		love.graphics.rectangle("fill", screenX, screenY, 70, 70)
-		love.graphics.setColor(0, 0, 0)
-		love.graphics.setFont(font)
-		love.graphics.print(tostring(enemy.health), screenX, screenY)
+		if enemy.height < 70 then
+			enemy.height = enemy.height + 20 * dt
+			enemy.width = enemy.width + 20 * dt
+			if enemy.height > 70 then
+				enemy.height = 70
+			end
+			if enemy.width > 70 then
+				enemy.width = 70
+			end
+		end
 	end
 end
 
@@ -76,10 +88,25 @@ function love.mousepressed(mouseX, mouseY, button)
 			lifetime = 1.5
 		})
 	end
+	if shop and not debugMenu then
+		if mouseX >= exitButtonX and mouseX <= exitButtonX + exitButtonWidth and mouseY >= exitButtonY and mouseY <= exitButtonY + exitButtonHeight then
+			shop = false
+			paused = false
+			enemyspawn()
+		end
+	end
+	if debugMenu then
+		if mouseX >= 10 and mouseX <= 10 + font:getWidth("Kill em all") * 1.5 + 20 and mouseY >= 50 and mouseY <= 50 + font:getHeight("Kill em all") * 1.5 + 20 then
+			for _, enemy in ipairs(enemies) do
+				enemy.health = 0
+			end
+		end
+		if mouseX >= 10 and mouseX <= 10 + font:getWidth("Spawn Enemy") * 1.5 + 20 and mouseY >= 50 + font:getHeight("Kill em all") * 1.5 + 30 and mouseY <= 50 + font:getHeight("Kill em all") * 1.5 + 30 + font:getHeight("Spawn Enemy") * 1.5 + 20 then
+			enemyspawn()
+		end
+	end
 end
-
 function love.draw()
-
 	squareSize = 75
 	squareX = (screenWidth - squareSize) / 2
 	squareY = (screenHeight - squareSize) / 2
@@ -88,7 +115,7 @@ function love.draw()
 	 imageHeight = mothuel:getHeight() * imageScale
 	local bgScreenX = backgroundWorldX - player.x + screenWidth / 2
 	local bgScreenY = backgroundWorldY - player.y + screenHeight / 2
-	love.graphics.draw(background, bgScreenX, bgScreenY, 0, 50, 50)
+	love.graphics.draw(background, bgScreenX, bgScreenY, 0, 50, 50)	
 	if not paused then
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.rectangle("fill", squareX, squareY, squareSize, squareSize)	
@@ -100,6 +127,17 @@ function love.draw()
 	love.graphics.setColor(0, 0, 0)
 	love.graphics.rectangle ("line", screenWidth - 20 - 300, 10, 300, 60)
 	love.graphics.setColor(1, 1, 1)
+	function drawenemy(enemy)
+		if enemy.health > 0 then
+			local screenX = enemy.x - player.x + screenWidth / 2
+			local screenY = enemy.y - player.y + screenHeight / 2
+			love.graphics.setColor(0, 1, 0)
+			love.graphics.rectangle("fill", screenX, screenY, enemy.width, enemy.height)
+			love.graphics.setColor(0, 0, 0)
+			love.graphics.setFont(font)
+			love.graphics.print(tostring(enemy.health), screenX, screenY)
+		end
+	end
 	if not paused then
 		for _, shot in ipairs(playershots) do
 			local screenX = shot.x - player.x + screenWidth / 2
@@ -119,6 +157,13 @@ function love.draw()
 		drawenemy(enemy)
 	end
 		if shop then
+		local function drawExitButton()
+			love.graphics.setColor(1, 0, 0)
+			love.graphics.rectangle("fill", exitButtonX, exitButtonY, exitButtonWidth, exitButtonHeight)
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.print("Exit", exitButtonX + 25, exitButtonY + 15, 0, 1.5, 1.5)
+			love.graphics.setColor(0, 0, 0)
+		end
 		local function drawShopLabel(label, x, y, scale)
 			local shopbuttonWidth = screenWidth / 4
 			local shopbuttonHeight = font:getHeight() * scale
@@ -143,7 +188,6 @@ function love.draw()
 		drawArtifactLabel(1)
 		drawArtifactLabel(2)
 		drawArtifactLabel(3)
-		
 		drawShopLabel("Damage()", 40, 40, 2)
 		drawShopLabel("Reload()", 40, 40 + (screenHeight - 80) / 8, 2)
 		drawShopLabel("Speed()", 40, 40 + 2 * (screenHeight - 80) / 8, 2)
@@ -152,8 +196,28 @@ function love.draw()
 		drawShopLabel("Luck()", 40, 40 + 5 * (screenHeight - 80) / 8, 2)
 		drawShopLabel("Bullet Penetration()", 40, 40 + 6 * (screenHeight - 80) / 8, 2)
 		drawShopLabel("Artifact Strength()", 40, 40 + 7 * (screenHeight - 80) / 8, 2)
+		drawExitButton()
 	end
-
+	if debugMenu then
+		local function drawDebugButton(label, x, y)
+			local labelWidth = font:getWidth(label) * 1.5 + 20
+			local labelHeight = font:getHeight(label) * 1.5 + 20
+			love.graphics.setColor(1, 1, 1)
+			love.graphics.rectangle("fill", x, y, labelWidth, labelHeight)
+			love.graphics.setColor(0, 0, 0)
+			love.graphics.print(label, x + 10, y + 10, 0, 1.5, 1.5)
+		end
+		drawDebugButton("Kill em all", 10, 50)
+		drawDebugButton("Spawn Enemy", 10, 50 + font:getHeight("Kill em all") * 1.5 + 30)
+		drawDebugButton(tostring(#enemies) .. " Enemies", 10, 50 + 2 * (font:getHeight("Kill em all") * 1.5 + 30))
+		love.graphics.setColor(0, 0, 0)
+		local debugMenuTitleHeight = font:getHeight("Dev Menu")
+		local debugMenuTitleWidth = font:getWidth("Dev Menu") 
+		love.graphics.rectangle("fill", 0, 0, debugMenuTitleWidth * 2 + 20, debugMenuTitleHeight * 2 + 20)
+		love.graphics.setColor(1, 1, 1)
+		love.graphics.print("Dev Menu", 10, 10, 0, 2, 2)
+		love.graphics.setColor(0, 0, 0)
+	end
 	love.graphics.setColor(1, 1, 1)
 	love.graphics.draw(cursor, mouseX, mouseY, 0, 0.12, 0.12, cursor:getWidth() / 2, cursor:getHeight() / 2)
 end
@@ -165,6 +229,7 @@ function love.update(dt)
 	if not paused and love.keyboard.isDown("1") and not autofire and autofirecooldown <= 0 then autofire = true autofirecooldown = 1 end
 	if not paused and love.keyboard.isDown("1") and autofire and autofirecooldown <= 0 then autofire = false autofirecooldown = 1 end
 	autofirecooldown = autofirecooldown - dt
+	debugMenuCooldown = debugMenuCooldown - dt
 	if not paused and cooldown <= 0 and autofire == true then
 		cooldown = .5
 		local sourceX = love.graphics.getWidth() / 2
@@ -189,6 +254,12 @@ function love.update(dt)
 	for _, enemy in ipairs(enemies) do
 		enemymove(enemy, dt)
 	end
+	if spawnTimer <= 0 and not paused and not debugMenu then
+		enemyspawn()
+		spawnTimer = math.random(0.00000001, .1)
+	else
+		spawnTimer = spawnTimer - dt
+	end
 	local moveX, moveY = 0, 0
 	if not paused and love.keyboard.isDown("w") then moveY = moveY - 1 end
 	if not paused and love.keyboard.isDown("s") then moveY = moveY + 1 end
@@ -202,8 +273,15 @@ function love.update(dt)
 		player.y = player.y + moveY / moveLength * moveSpeed
 	end
 
-	if love.keyboard.isDown("escape") then
-		love.event.quit()
+	if love.keyboard.isDown("escape") then		
+		if not debugMenu and debugMenuCooldown <= 0 then
+			debugMenu = true
+			debugMenuCooldown = 0.5
+		elseif debugMenu and debugMenuCooldown <= 0 then
+			debugMenu = false
+			debugMenuCooldown = 0.5
+		end
+		
 	end
 
 	cooldown = cooldown - dt
