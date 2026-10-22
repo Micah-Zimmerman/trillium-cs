@@ -1,9 +1,6 @@
 function love.load()
 	background = love.graphics.newImage("Images/vietnambackground.png")
 	enemies = {
-		{ x = 400, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 },
-		{ x = 500, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 },
-		{ x = 600, y = 400, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 }
 	}
 	mothuel = love.graphics.newImage("Images/mothuel.png")
 	cursor = love.graphics.newImage("Images/cursor.png")
@@ -29,6 +26,9 @@ function love.load()
 	debugMenu = false
 	debugMenuCooldown = 0
 	spawnTimer = 1
+	enemiesThisWaveSection = 3
+	wave = 1 
+	waveSection = 1
 end
 function enemyspawn()
 	local spawnDistance = math.random(300, 500)
@@ -37,7 +37,13 @@ function enemyspawn()
 	local spawnY = player.y + math.sin(angle) * spawnDistance
 	table.insert(enemies, { x = spawnX, y = spawnY, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 })
 end
-function enemymove(enemy, dt)
+function endWave(enemiesThisWaveSection)
+	if waveSection == 0 and # enemies == 0 then	
+		paused = true
+		shop = true
+	end	
+end
+function enemyLogic(enemy, dt)
 	if not paused then
 		local dx = player.x - (enemy.x + 35)
 		local dy = player.y - (enemy.y + 35)
@@ -65,7 +71,18 @@ function enemymove(enemy, dt)
 		end
 	end
 end
-
+function spawnEnemiesForWaveSection(wave, waveSection, dt)
+	if wave == 1 and waveSection == 1  and enemiesThisWaveSection > 0 and spawnTimer <= 0 and not paused then
+		enemyspawn()
+		enemiesThisWaveSection = enemiesThisWaveSection - 1
+		spawnTimer = math.random(.5, 1)
+	else
+		spawnTimer = spawnTimer - dt
+	end
+	if enemiesThisWaveSection <= 0 and #enemies == 0 then
+		waveSection = waveSection - 1
+	end
+end
 function love.mousepressed(mouseX, mouseY, button)
 	if not paused and button == 1 and cooldown <= 0 and autofire == false then
 		cooldown = .5
@@ -226,8 +243,8 @@ function love.update(dt)
 	mouseX, mouseY = love.mouse.getPosition()
 	screenWidth = love.graphics.getWidth()
 	screenHeight = love.graphics.getHeight()
-	if not paused and love.keyboard.isDown("1") and not autofire and autofirecooldown <= 0 then autofire = true autofirecooldown = 1 end
-	if not paused and love.keyboard.isDown("1") and autofire and autofirecooldown <= 0 then autofire = false autofirecooldown = 1 end
+	if not paused and love.keyboard.isDown("e") and not autofire and autofirecooldown <= 0 then autofire = true autofirecooldown = 1 end
+	if not paused and love.keyboard.isDown("e") and autofire and autofirecooldown <= 0 then autofire = false autofirecooldown = 1 end
 	autofirecooldown = autofirecooldown - dt
 	debugMenuCooldown = debugMenuCooldown - dt
 	if not paused and cooldown <= 0 and autofire == true then
@@ -252,14 +269,9 @@ function love.update(dt)
 		})
 	end
 	for _, enemy in ipairs(enemies) do
-		enemymove(enemy, dt)
+		enemyLogic(enemy, dt)
 	end
-	if spawnTimer <= 0 and not paused and not debugMenu then
-		enemyspawn()
-		spawnTimer = math.random(0.00000001, .1)
-	else
-		spawnTimer = spawnTimer - dt
-	end
+
 	local moveX, moveY = 0, 0
 	if not paused and love.keyboard.isDown("w") then moveY = moveY - 1 end
 	if not paused and love.keyboard.isDown("s") then moveY = moveY + 1 end
@@ -283,7 +295,7 @@ function love.update(dt)
 		end
 		
 	end
-
+	spawnEnemiesForWaveSection(wave, waveSection, dt)
 	cooldown = cooldown - dt
 	for _, enemy in ipairs(enemies) do
 		local playerHalfSize = 75 / 2
@@ -309,6 +321,12 @@ function love.update(dt)
 		end
 	end
 	local playershotSpeed = 500
+	for index = #enemies, 1, -1 do
+		local enemy = enemies[index]
+		if enemy.health <= 0 then
+			table.remove(enemies, index)
+		end
+	end
 	for index = #playershots, 1, -1 do
 		local playershot = playershots[index]
 		playershot.lifetime = playershot.lifetime - dt
@@ -328,14 +346,5 @@ function love.update(dt)
 			end
 		end
 	end
-	wavecleared = true
-	for _, enemy in ipairs(enemies) do
-		if enemy.health > 0 then
-			wavecleared = false
-			break
-		end
-	end
-
-	paused = wavecleared
-	shop = wavecleared
+	endWave(enemiesThisWaveSection)
 end
