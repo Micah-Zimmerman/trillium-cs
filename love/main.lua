@@ -26,9 +26,13 @@ function love.load()
 	debugMenu = false
 	debugMenuCooldown = 0
 	spawnTimer = 1
-	enemiesThisWaveSection = 3
 	wave = 1 
 	waveSection = 1
+	enemiesInTheWaveSection = {
+		--wave 1, section 1
+	 	{ {3}, {1} }
+	}
+	enemiesThisWaveSection = math.tointeger(enemiesInTheWaveSection[1][1]) or 0
 end
 function enemyspawn()
 	local spawnDistance = math.random(300, 500)
@@ -37,13 +41,13 @@ function enemyspawn()
 	local spawnY = player.y + math.sin(angle) * spawnDistance
 	table.insert(enemies, { x = spawnX, y = spawnY, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 })
 end
-function endWave(enemiesThisWaveSection)
+function endWave()
 	if waveSection == 0 and # enemies == 0 then	
 		paused = true
 		shop = true
 	end	
 end
-function enemyLogic(enemy, dt)
+function enemyLogic(enemy, dt, enemiesThisWaveSection)
 	if not paused then
 		local dx = player.x - (enemy.x + 35)
 		local dy = player.y - (enemy.y + 35)
@@ -71,17 +75,19 @@ function enemyLogic(enemy, dt)
 		end
 	end
 end
-function spawnEnemiesForWaveSection(wave, waveSection, dt)
-	if wave == 1 and waveSection == 1  and enemiesThisWaveSection > 0 and spawnTimer <= 0 and not paused then
+function spawnEnemiesForWaveSection(dt)
+	if enemiesThisWaveSection > 0 and not paused then
 		enemyspawn()
 		enemiesThisWaveSection = enemiesThisWaveSection - 1
-		spawnTimer = math.random(.5, 1)
+		spawnTimer = math.random(.5, 1) 
 	else
 		spawnTimer = spawnTimer - dt
 	end
-	if enemiesThisWaveSection <= 0 and #enemies == 0 then
+	if enemiesThisWaveSection <= 0 and #enemies == 0 and waveSection > 0 then
 		waveSection = waveSection - 1
+		enemiesThisWaveSection = math.tointeger(enemiesInTheWaveSection[1][1]) or 0
 	end
+	endWave()
 end
 function love.mousepressed(mouseX, mouseY, button)
 	if not paused and button == 1 and cooldown <= 0 and autofire == false then
@@ -295,7 +301,7 @@ function love.update(dt)
 		end
 		
 	end
-	spawnEnemiesForWaveSection(wave, waveSection, dt)
+	spawnEnemiesForWaveSection(dt)
 	cooldown = cooldown - dt
 	for _, enemy in ipairs(enemies) do
 		local playerHalfSize = 75 / 2
@@ -346,5 +352,4 @@ function love.update(dt)
 			end
 		end
 	end
-	endWave(enemiesThisWaveSection)
 end
