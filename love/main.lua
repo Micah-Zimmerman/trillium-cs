@@ -1,7 +1,9 @@
 function love.load()
+	math.randomseed(os.time())
 	background = love.graphics.newImage("Images/vietnambackground.png")
 	enemies = {
 	}
+	countdownWaveSection = 5
 	mothuel = love.graphics.newImage("Images/mothuel.png")
 	cursor = love.graphics.newImage("Images/cursor.png")
 	playershots = {}
@@ -14,7 +16,7 @@ function love.load()
 	autofire = false
 	screenWidth = love.graphics.getWidth()
 	screenHeight = love.graphics.getHeight()
-	player = { x = 0, y = 0, health = 100 }
+	player = { x = 0, y = 0, health = 100, damage = 20 }
 	wavecleared = false
 	paused = false
 	shop = false
@@ -27,27 +29,36 @@ function love.load()
 	debugMenuCooldown = 0
 	spawnTimer = 1
 	wave = 1 
-	waveSection = 1
-	enemiesInTheWaveSection = {
-		--wave 1, section 1
-	 	{ {3}, {1} }
+	howManyWavesections = {
+		[1] = 3,
+		[2] = 5,
 	}
-	enemiesThisWaveSection = math.tointeger(enemiesInTheWaveSection[1][1]) or 0
+	waveSection = howManyWavesections[wave]
+	enemiesInTheWaveSection = {
+	 	{ {0}, {2}, {1}},
+		{ {0}, {7}, {6}, {5}, {4}}
+	}
+	enemiesThisWaveSection = (enemiesInTheWaveSection[wave][waveSection][0]) or 0
+	angle = -99999999
 end
 function enemyspawn()
-	local spawnDistance = math.random(300, 500)
-	local angle = math.random() * 2 * math.pi
+	local spawnDistance = math.random(200, 400)
+	local newangle = math.random() * 2 * math.pi
+	while math.abs(newangle - angle) < math.pi / 4 do
+		newangle = math.random() * 2 * math.pi
+	end
+	angle = newangle
 	local spawnX = player.x + math.cos(angle) * spawnDistance
 	local spawnY = player.y + math.sin(angle) * spawnDistance
 	table.insert(enemies, { x = spawnX, y = spawnY, health = 100, knockedback = false, knockbacktime = 0, height = 10, width = 10 })
 end
 function endWave()
-	if waveSection == 0 and # enemies == 0 then	
+	if waveSection == 0 and # enemies == 0 and enemiesThisWaveSection == 0 then	
 		paused = true
 		shop = true
 	end	
 end
-function enemyLogic(enemy, dt, enemiesThisWaveSection)
+function enemyLogic(enemy, dt)
 	if not paused then
 		local dx = player.x - (enemy.x + 35)
 		local dy = player.y - (enemy.y + 35)
@@ -66,6 +77,8 @@ function enemyLogic(enemy, dt, enemiesThisWaveSection)
 		if enemy.height < 70 then
 			enemy.height = enemy.height + 20 * dt
 			enemy.width = enemy.width + 20 * dt
+			enemy.x = enemy.x - 10 * dt
+			enemy.y = enemy.y - 10 * dt
 			if enemy.height > 70 then
 				enemy.height = 70
 			end
@@ -76,16 +89,19 @@ function enemyLogic(enemy, dt, enemiesThisWaveSection)
 	end
 end
 function spawnEnemiesForWaveSection(dt)
-	if enemiesThisWaveSection > 0 and not paused then
+	if enemiesThisWaveSection > 0 and spawnTimer <= 0 and not paused then
 		enemyspawn()
 		enemiesThisWaveSection = enemiesThisWaveSection - 1
-		spawnTimer = math.random(.5, 1) 
+		spawnTimer = 1 + math.random() * 0.5
 	else
 		spawnTimer = spawnTimer - dt
 	end
-	if enemiesThisWaveSection <= 0 and #enemies == 0 and waveSection > 0 then
-		waveSection = waveSection - 1
-		enemiesThisWaveSection = math.tointeger(enemiesInTheWaveSection[1][1]) or 0
+	if enemiesThisWaveSection <= 0 and and waveSection > 0 then
+		if #enemies == 0 then
+			enemiesThisWaveSection = (enemiesInTheWaveSection[wave][waveSection][1]) or 0	
+			waveSection = waveSection - 1		
+		else
+			countdownWaveSection = countdownWaveSection - dt
 	end
 	endWave()
 end
@@ -105,17 +121,20 @@ function love.mousepressed(mouseX, mouseY, button)
 		table.insert(playershots, {
 			x = player.x,
 			y = player.y,
-			damage = 100,
+			damage = player.damage,
 			directionX = directionX,
 			directionY = directionY,
 			lifetime = 1.5
 		})
 	end
-	if shop and not debugMenu then
+	if shop then
 		if mouseX >= exitButtonX and mouseX <= exitButtonX + exitButtonWidth and mouseY >= exitButtonY and mouseY <= exitButtonY + exitButtonHeight then
 			shop = false
 			paused = false
-			enemyspawn()
+			wave = wave + 1
+			waveSection = howManyWavesections[wave]
+			enemiesThisWaveSection = (enemiesInTheWaveSection[wave][waveSection][0]) or 0
+	
 		end
 	end
 	if debugMenu then
@@ -126,6 +145,11 @@ function love.mousepressed(mouseX, mouseY, button)
 		end
 		if mouseX >= 10 and mouseX <= 10 + font:getWidth("Spawn Enemy") * 1.5 + 20 and mouseY >= 50 + font:getHeight("Kill em all") * 1.5 + 30 and mouseY <= 50 + font:getHeight("Kill em all") * 1.5 + 30 + font:getHeight("Spawn Enemy") * 1.5 + 20 then
 			enemyspawn()
+		end
+		if mouseX >= 10 and mouseX <= 10 + font:getWidth("End Wave") * 1.5 + 20 and mouseY >= 50 + 3 * (font:getHeight("Kill em all") * 1.5 + 30) and mouseY <= 50 + 3 * (font:getHeight("Kill em all") * 1.5 + 30) + font:getHeight("End Wave") * 1.5 + 20 then
+			enemiesThisWaveSection = 0
+			waveSection = 0
+			enemies = {}
 		end
 	end
 end
@@ -158,7 +182,7 @@ function love.draw()
 			love.graphics.rectangle("fill", screenX, screenY, enemy.width, enemy.height)
 			love.graphics.setColor(0, 0, 0)
 			love.graphics.setFont(font)
-			love.graphics.print(tostring(enemy.health), screenX, screenY)
+			love.graphics.print(tostring(enemy.health), screenX + enemy.width / 2 - font:getWidth(tostring(enemy.health)) / 2, screenY + enemy.height / 2 - font:getHeight(tostring(enemy.health)) / 2)
 		end
 	end
 	if not paused then
@@ -233,6 +257,7 @@ function love.draw()
 		drawDebugButton("Kill em all", 10, 50)
 		drawDebugButton("Spawn Enemy", 10, 50 + font:getHeight("Kill em all") * 1.5 + 30)
 		drawDebugButton(tostring(#enemies) .. " Enemies", 10, 50 + 2 * (font:getHeight("Kill em all") * 1.5 + 30))
+		drawDebugButton("End Wave", 10, 50 + 3 * (font:getHeight("Kill em all") * 1.5 + 30))
 		love.graphics.setColor(0, 0, 0)
 		local debugMenuTitleHeight = font:getHeight("Dev Menu")
 		local debugMenuTitleWidth = font:getWidth("Dev Menu") 
@@ -271,7 +296,7 @@ function love.update(dt)
 			directionX = directionX,
 			directionY = directionY,
 			lifetime = 1.5,
-			damage = 100
+			damage = player.damage
 		})
 	end
 	for _, enemy in ipairs(enemies) do
